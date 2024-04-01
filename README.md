@@ -97,7 +97,7 @@ if (0,):
 
 ## Testing `ruff`
 
-This project also allow to test [https://pypi.org/project/ruff/](ruff)
+This project also allow to test [`ruff`](https://pypi.org/project/ruff/)
 
 ```bash
 python3 main.py
