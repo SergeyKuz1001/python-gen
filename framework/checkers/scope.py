@@ -1,11 +1,13 @@
-from abstract_checker import AbstractChecker
-from generator import Generator, TL
+from .abstract import AbstractChecker
 
+from ..trace_language import NotIn
+
+from abc import ABC
 from libcst import CSTNode, Name, IndentedBlock, FunctionDef
 from typing import Optional, Callable, Any, Iterator
 
 
-class AbstractScopeChecker(AbstractChecker):
+class ScopeChecker(AbstractChecker, ABC):
 
     def __init__(self):
         self._scopes: list[dict[str, Any]] = []
@@ -30,47 +32,43 @@ class AbstractScopeChecker(AbstractChecker):
                     self._scopes[i][name] = func(info)
                     return
 
-    def revisit_mid_node(self, node: CSTNode, generator: Generator, *args) -> None:
-        if len(args) == 1:
-            new_node, generator = generator, args[0]
+    def revisit_mid_node(self, mid_node: CSTNode, new_node: Optional[CSTNode], generator: "Generator") -> None:
         if generator.on_trace("function_def", "parameters"):
             self._begin()
         elif generator.on_trace("module"):
             self._begin()
-        elif generator.on_trace(TL.NotIn(("function_def", "module")), "indented_block"):
+        elif generator.on_trace(NotIn(("function_def", "module")), "indented_block"):
             self._begin()
 
-    def releave_mid_node(self, node: CSTNode, generator: Generator, *args) -> None:
-        if len(args) == 1:
-            new_node, generator = generator, args[0]
+    def releave_mid_node(self, mid_node: CSTNode, new_node: Optional[CSTNode], generator: "Generator") -> None:
         if generator.on_trace("indented_block"):
             self._end()
 
     class _InfoObject:
         def __imod__(
             self, func: Callable[Optional[Any], Any]
-        ) -> "AbstractScopeChecker._InfoObject":
+        ) -> "ScopeChecker._InfoObject":
             self.func = func
             return self
 
     def __getitem__(self, name: str) -> Any:
-        return AbstractScopeChecker._InfoObject()
+        return ScopeChecker._InfoObject()
 
     def __setitem__(self, name: str, info: Any) -> None:
-        if type(info) == AbstractScopeChecker._InfoObject:
+        if type(info) == ScopeChecker._InfoObject:
             self.update(name, info.func)
         else:
             self.add(name, info)
 
-    def __iter__(self) -> "AbstractScopeChecker._Iterator":
-        return AbstractScopeChecker._Iterator(self._scopes)
+    def __iter__(self) -> "ScopeChecker._Iterator":
+        return ScopeChecker._Iterator(self._scopes)
 
     class _Iterator:
         def __init__(self, scopes: list[dict[str, Any]]):
             self.iter1: Iterator[dict[str, Any]] = iter(scopes)
             self.iter2: Optional[Iterator[tuple[str, Any]]] = None
 
-        def __iter__(self) -> "AbstractScopeChecker._Iterator":
+        def __iter__(self) -> "ScopeChecker._Iterator":
             return self
 
         def __next__(self) -> tuple[str, Any]:

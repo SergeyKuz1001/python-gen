@@ -1,22 +1,5 @@
-from abstract_scope_checker import AbstractScopeChecker
-from rule_checker import RuleChecker
-from gen_node import GenNode
-from generator import Generator, TL
-from config import Constructor, ListDescriptor, LambdaConst, GenGetter
-from failures import UnexpectedFailure
+from framework import *
 
-from libcst import (
-    IndentedBlock,
-    CSTNode,
-    FunctionDef,
-    Assign,
-    AssignTarget,
-    Name,
-    SimpleStatementLine,
-    Tuple,
-    Expr,
-    Element,
-)
 from typing import Optional, Callable
 
 
@@ -24,35 +7,39 @@ class UnusedVariable:
     rule: str = "F841"
 
     class Without:
-        class AddTupleInLastLineOfBlockChecker(AbstractScopeChecker, RuleChecker):
-            def in_rules(self, rules: list[str], generator: Generator) -> bool:
+        class AddTupleInLastLineOfBlockChecker(ScopeChecker, RuleChecker):
+            def in_rules(self, rules: list[str]) -> bool:
                 return UnusedVariable.rule not in rules
 
+            @property
+            def identifier(self) -> str:
+                return "-uv"
+
             def start_generation(self, generator: Generator) -> None:
-                config_indented_block = generator.config.get("indented_block")
+                rule = generator.grammar["indented_block"]
                 if (
-                    config_indented_block is None
-                    or type(config_indented_block) != Constructor
-                    or config_indented_block.init != IndentedBlock
-                    or "body" not in config_indented_block.kwargs
-                    or type(config_indented_block.kwargs["body"]) != ListDescriptor
+                    rule is None
+                    or type(rule) != Constructor
+                    or rule.init != IndentedBlock
+                    or "body" not in rule.kwargs
+                    or type(rule.kwargs["body"]) != ListDescriptor
                 ):
                     raise UnexpectedFailure(
                         "Unexpected structure of indented_block GenNode"
                     )
-                generator.config["indented_block"] = Constructor(
+                generator.grammar["indented_block"] = Constructor(
                     IndentedBlock,
                     body=ListDescriptor(
-                        lambda choose: config_indented_block.kwargs["body"].size(choose)
+                        lambda choose: rule.kwargs["body"].size(choose)
                         + 1,
                         lambda index, length: (
-                            config_indented_block.kwargs["body"].elem(index, length - 1)
+                            rule.kwargs["body"].elem(index, length - 1)
                             if index + 1 != length
                             else LambdaConst(GenNode, "uv_atillob__tuple")
                         ),
                     ),
                 )
-                generator.config["uv_atillob__tuple"] = GenGetter(
+                generator.grammar["uv_atillob__tuple"] = GenGetter(
                     lambda generator: LambdaConst(
                         SimpleStatementLine,
                         [
@@ -75,7 +62,7 @@ class UnusedVariable:
 
             def leave_pure_node(self, node: CSTNode, generator: Generator) -> None:
                 if generator.on_trace(
-                    TL.SearchThroughMany("base_expression", TL.Any()), Name
+                    SearchThroughMany("base_expression", Any()), Name
                 ):
                     if node.value in map(lambda p: p[0], self):
                         self[node.value] %= lambda _: True
@@ -86,3 +73,5 @@ class UnusedVariable:
                     self[node.targets[0].target.value] = False
                 elif generator.on_trace(FunctionDef):
                     self[node.name.value] = False
+                elif generator.on_trace(Param, "new_name", Name):
+                    self[node.value] = False

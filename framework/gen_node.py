@@ -1,15 +1,15 @@
-from failures import UnexpectedFailure
+from .failures import UnexpectedFailure
 
 from dataclasses import dataclass
-from libcst import CSTNode, CSTNodeT, CSTVisitorT
+from libcst import CSTNode, CSTVisitorT
 
 
 @dataclass(frozen=True)
 class GenNode(CSTNode):
     tag: str
 
-    def generate(self, generator: "Generator") -> CSTNodeT:
-        return generator.config[self.tag].generate(generator)
+    def generate(self, generator: "Generator") -> CSTNode:
+        return generator.grammar.generate(self, generator)
 
     def _visit_and_replace_children(self, visitor: CSTVisitorT) -> CSTNode:
         raise UnexpectedFailure(

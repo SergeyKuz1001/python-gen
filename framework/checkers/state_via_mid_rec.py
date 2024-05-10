@@ -1,7 +1,9 @@
-from abstract_checker import AbstractChecker
+from .abstract import AbstractChecker
+
+from abc import ABC
 
 
-class StateViaMidRecChecker(AbstractChecker):
+class StateViaMidRecChecker(AbstractChecker, ABC):
     def __init__(self):
         self._states: list[any] = []
 

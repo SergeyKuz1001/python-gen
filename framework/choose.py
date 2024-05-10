@@ -1,4 +1,4 @@
-from failures import AllowableFailure
+from .failures import AllowableFailure
 
 from dataclasses import dataclass
 from typing import Any, Callable, Iterable, Tuple
