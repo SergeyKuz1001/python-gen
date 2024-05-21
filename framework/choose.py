@@ -27,7 +27,7 @@ class Choose:
         lrps = list(nrps) if type(rps) is not list else nrps
         n = self.N(sum(lrps))
         for i, rp in enumerate(lrps):
-            if rp < n:
+            if rp <= n:
                 n -= rp
             else:
                 return i
@@ -49,7 +49,8 @@ class Choose:
         N = 100
         privilegeN = round(N * privilege)
         return self.F(
-            lambda x: privilegeN - (privilegeN - N) * abs(x - average) // variance,
+            lambda x: privilegeN
+            - (privilegeN - N) * abs(x - average) // variance,
             average - variance,
             average + variance,
         )

@@ -13,7 +13,7 @@ class RuleBody(ABC):
 
 @dataclass()
 class LambdaConst(RuleBody):
-    init: Callable[["args"], any]
+    init: any
     args: list[any] = field(default_factory=list)
     kwargs: dict[str, any] = field(default_factory=dict)
 
@@ -23,7 +23,14 @@ class LambdaConst(RuleBody):
         self.kwargs = kwargs
 
     def __call__(self, *args, **kwargs) -> any:
-        return self.init(*(self.args), **(self.kwargs))
+        if (
+            len(self.args) == 0
+            and len(self.kwargs) == 0
+            and not callable(self.init)
+        ):
+            return self.init
+        else:
+            return self.init(*(self.args), **(self.kwargs))
 
     def generate(self, generator: "Generator") -> any:
         return self.__call__()
@@ -45,7 +52,10 @@ class Constructor(RuleBody):
     def generate(self, generator: "Generator") -> any:
         return self.init(
             *[part.generate(generator) for part in self.args],
-            **{name: part.generate(generator) for name, part in self.kwargs.items()}
+            **{
+                name: part.generate(generator)
+                for name, part in self.kwargs.items()
+            }
         )
 
 
@@ -56,7 +66,9 @@ class ListDescriptor(RuleBody):
 
     def generate(self, generator: "Generator") -> any:
         size = self.size(generator.choose)
-        return [self.elem(index, size).generate(generator) for index in range(size)]
+        return [
+            self.elem(index, size).generate(generator) for index in range(size)
+        ]
 
 
 @dataclass()
@@ -79,12 +91,18 @@ class Alternatives(RuleBody):
                 self.alts = alts
         else:
             if isinstance(alts[0], RuleBody):
-                self.alts = {idx: [1, part] for idx, part in enumerate(alts)}
+                self.alts = {
+                    str(idx): [1, part] for idx, part in enumerate(alts)
+                }
             else:
-                self.alts = {idx: [w, part] for idx, (w, part) in enumerate(alts)}
+                self.alts = {
+                    str(idx): [w, part] for idx, (w, part) in enumerate(alts)
+                }
 
     def generate(self, generator: "Generator") -> any:
-        return generator.choose.LRP(list(self.alts.values())).generate(generator)
+        return generator.choose.LRP(list(self.alts.values())).generate(
+            generator
+        )
 
 
 @dataclass()
@@ -108,10 +126,12 @@ class GenGetter(RuleBody):
 
 
 class Grammar:
-    def __init__(self, identifier: str, start_tag: str, start_body: RuleBody, *rules):
-        self._identifier = identifier
-        self._start = GenNode(start_tag)
-        self._rules = {start_tag: [start_body]}
+    def __init__(
+        self, identifier: str, start_tag: str, start_body: RuleBody, *rules
+    ):
+        self._identifier: str = identifier
+        self._start: GenNode = GenNode(start_tag)
+        self._rules: dict[str, list[RuleBody]] = {start_tag: [start_body]}
         for tag, body in zip(rules[0::2], rules[1::2]):
             self._rules[tag] = [body]
 

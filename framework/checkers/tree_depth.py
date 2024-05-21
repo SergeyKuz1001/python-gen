@@ -11,16 +11,28 @@ from typing import Union, Optional
 class TreeDepthChecker(StateViaMidRecChecker):
     accounted_nodes: dict[str, dict[str, int]]
     border: int
-    current_score: int = 0
     _identifier: Optional[str] = None
+    current_score: int = 0
 
-    def __post_init__(self):
-        super().__init__()
+    def start_generation(self, generator: "Generator") -> None:
+        self.current_score = 0
 
     @property
     def identifier(self) -> str:
         if self._identifier is None:
-            return "+" + str(self.border) + "+" + "--".join(sorted(node + "-" + alt + "-" + str(count) for node, accounted_alts in self.accounted_nodes.items() for alt, count in accounted_alts.items())) + "+"
+            return (
+                "+"
+                + str(self.border)
+                + "+"
+                + "--".join(
+                    sorted(
+                        node + "-" + alt + "-" + str(count)
+                        for node, accounted_alts in self.accounted_nodes.items()
+                        for alt, count in accounted_alts.items()
+                    )
+                )
+                + "+"
+            )
         else:
             return self._identifier
 
@@ -28,7 +40,12 @@ class TreeDepthChecker(StateViaMidRecChecker):
     def identifier(self, value: str) -> None:
         self._identifier = value
 
-    def revisit_gen_func(self, node: "GenNode", mid_node: Optional[CSTNode], generator: "Generator") -> None:
+    def revisit_gen_func(
+        self,
+        node: "GenNode",
+        mid_node: Optional[CSTNode],
+        generator: "Generator",
+    ) -> None:
         if (
             node.tag in self.accounted_nodes
             and type(generator.grammar[node.tag]) == Alternatives
@@ -44,11 +61,11 @@ class TreeDepthChecker(StateViaMidRecChecker):
                             w,
                             (
                                 GenGetter(
-                                    lambda generator, tag=tag: (
+                                    lambda generator, tag=tag, part=part: (
                                         part,
-                                        generator.find_checker(type(self)).__setattr__(
-                                            "_chosen_alt_tag", tag
-                                        ),
+                                        generator.find_checker(
+                                            type(self)
+                                        ).__setattr__("_chosen_alt_tag", tag),
                                     )[0]
                                 )
                                 if tag in self._accounted_tags
@@ -71,19 +88,35 @@ class TreeDepthChecker(StateViaMidRecChecker):
         else:
             self._is_accounted_node = False
 
-    def releave_gen_func(self, node: "GenNode", mid_node: Optional[CSTNode], generator: "Generator") -> None:
+    def releave_gen_func(
+        self,
+        node: "GenNode",
+        mid_node: Optional[CSTNode],
+        generator: "Generator",
+    ) -> None:
         if self._is_accounted_node:
             del generator.grammar[node.tag]
 
-    def revisit_mid_node(self, mid_node: CSTNode, new_node: Optional[CSTNode], generator: "Generator") -> None:
+    def revisit_mid_node_with_state(
+        self,
+        mid_node: CSTNode,
+        new_node: Optional[CSTNode],
+        generator: "Generator",
+    ) -> any:
         if self._is_accounted_node and self._chosen_alt_tag is not None:
             weight = self._accounted_tags[self._chosen_alt_tag]
             self.current_score += weight
-            self.state = (True, weight)
+            return (True, weight)
         else:
-            self.state = (False, None)
+            return (False, None)
 
-    def releave_mid_node(self, mid_node: CSTNode, new_node: Optional[CSTNode], generator: "Generator") -> None:
-        is_accounted_node, weight = self.state
+    def releave_mid_node_with_state(
+        self,
+        mid_node: CSTNode,
+        new_node: Optional[CSTNode],
+        generator: "Generator",
+        state: any,
+    ) -> None:
+        is_accounted_node, weight = state
         if is_accounted_node:
             self.current_score -= weight

@@ -4,30 +4,37 @@ from typing import Optional, Union, Callable
 
 Node = Union[type, str]
 
+
 class AbstractFilter(ABC):
     @abstractmethod
     def match(self, node: Node) -> bool: ...
 
+
 class GlobalFilter(AbstractFilter, ABC):
     pass
+
 
 class LocalFilter(AbstractFilter, ABC):
     @abstractmethod
     def exhaust(self) -> bool: ...
 
+
 class SpotFilter(LocalFilter, ABC):
     def exhaust(self) -> bool:
         return True
+
 
 @dataclass(frozen=True)
 class AllNodes(GlobalFilter):
     def match(self, node: Node) -> bool:
         return True
 
+
 @dataclass(frozen=True)
 class OnlyGenNodes(GlobalFilter):
     def match(self, node: Node) -> bool:
         return type(node) == str
+
 
 @dataclass(frozen=True)
 class SearchThroughMany(LocalFilter):
@@ -41,12 +48,14 @@ class SearchThroughMany(LocalFilter):
     def exhaust(self) -> bool:
         return self._is_exhaust
 
+
 @dataclass(frozen=True)
 class In(SpotFilter):
     nodes: list[Node]
 
     def match(self, node: Node) -> bool:
         return node in self.nodes
+
 
 @dataclass(frozen=True)
 class NotIn(SpotFilter):
@@ -55,10 +64,12 @@ class NotIn(SpotFilter):
     def match(self, node: Node) -> bool:
         return node not in self.nodes
 
+
 @dataclass(frozen=True)
 class Any(SpotFilter):
     def match(self, node: Node) -> bool:
         return True
+
 
 def _match(self: Union[Node, LocalFilter], node: Node) -> bool:
     if isinstance(self, LocalFilter):
@@ -66,11 +77,13 @@ def _match(self: Union[Node, LocalFilter], node: Node) -> bool:
     else:
         return self == node
 
+
 def _exhaust(self: Union[Node, LocalFilter]) -> bool:
     if isinstance(self, LocalFilter):
         return self.exhaust()
     else:
         return True
+
 
 def is_matched(
     trace: list[Node],

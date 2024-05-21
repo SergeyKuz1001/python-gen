@@ -6,21 +6,75 @@ from typing import Optional, Callable
 class UndefinedName:
     rule: str = "F821"
 
+    class With:
+        class _Base(RuleChecker):
+            def in_rules(self, rules: list[str]) -> bool:
+                return UndefinedName.rule in rules
+
+        class ContainsPredicateChecker(_Base, PredicateChecker):
+            @property
+            def identifier(self) -> str:
+                return "+un"
+
+            class InternalVisitor(CSTVisitor):
+                def __init__(self):
+                    self.name_in_right_side: bool = False
+                    self.defined_names: set[str] = {"True", "False", "None"}
+                    self.there_is_undefined_name: bool = False
+
+                def visit_Assign_value(self, node: "AssignTarget") -> None:
+                    self.name_in_right_side = True
+
+                def leave_Assign_value(self, node: "AssignTarget") -> None:
+                    self.name_in_right_side = False
+
+                def visit_Name(self, node: "Name") -> bool:
+                    if self.name_in_right_side:
+                        if node.value not in self.defined_names:
+                            self.there_is_undefined_name = True
+                    else:
+                        self.defined_names.add(node.value)
+
+            def predicate(self, tree: CSTNode) -> bool:
+                visitor = self.InternalVisitor()
+                tree.visit(visitor)
+                return visitor.there_is_undefined_name
+
     class Without:
-        class NotNewNameInObjectOrMethodChecker(ScopeChecker, RuleChecker):
+        class _Base(RuleChecker):
             def in_rules(self, rules: list[str]) -> bool:
                 return UndefinedName.rule not in rules
 
+        class NotNewNameInObjectOrMethodChecker(
+            LimitedRollbackableChecker, _Base, ScopeChecker
+        ):
             @property
             def identifier(self) -> str:
                 return "-un"
+
+            @property
+            def unleave_mid_node_methods(
+                self,
+            ) -> list[
+                tuple[
+                    list[AbstractFilter],
+                    Callable[[CSTNode, CSTNode, "Generator"], None],
+                ]
+            ]:
+                return [
+                    (
+                        ["module"],
+                        lambda mid_node, new_node, generator: ScopeChecker.start_generation(
+                            self, generator
+                        ),
+                    ),
+                ]
 
             def start_generation(self, generator: Generator) -> None:
                 rule = generator.grammar["object_or_method"]
                 if (
                     rule is None
                     or type(rule) != Alternatives
-                    or type(rule.alts) != dict
                     or "object" not in rule.alts
                 ):
                     raise UnexpectedFailure(
@@ -31,7 +85,10 @@ class UndefinedName:
                         tag: (
                             part
                             if tag != "object"
-                            else LambdaConst(GenNode, "un_nnnioom__object")
+                            else [
+                                part[0],
+                                LambdaConst(GenNode, "un_nnnioom__object"),
+                            ]
                         )
                         for tag, part in rule.alts.items()
                     }
@@ -46,7 +103,10 @@ class UndefinedName:
                 )
 
             def revisit_mid_node(
-                self, mid_node: CSTNode, new_node: Optional[CSTNode], generator: Generator
+                self,
+                mid_node: CSTNode,
+                new_node: Optional[CSTNode],
+                generator: Generator,
             ) -> None:
                 super().revisit_mid_node(mid_node, new_node, generator)
                 if new_node is None and generator.on_trace("module"):

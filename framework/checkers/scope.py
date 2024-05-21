@@ -9,7 +9,7 @@ from typing import Optional, Callable, Any, Iterator
 
 class ScopeChecker(AbstractChecker, ABC):
 
-    def __init__(self):
+    def start_generation(self, generator: "Generator") -> None:
         self._scopes: list[dict[str, Any]] = []
 
     def _begin(self) -> None:
@@ -32,15 +32,27 @@ class ScopeChecker(AbstractChecker, ABC):
                     self._scopes[i][name] = func(info)
                     return
 
-    def revisit_mid_node(self, mid_node: CSTNode, new_node: Optional[CSTNode], generator: "Generator") -> None:
+    def revisit_mid_node(
+        self,
+        mid_node: CSTNode,
+        new_node: Optional[CSTNode],
+        generator: "Generator",
+    ) -> None:
         if generator.on_trace("function_def", "parameters"):
             self._begin()
         elif generator.on_trace("module"):
             self._begin()
-        elif generator.on_trace(NotIn(("function_def", "module")), "indented_block"):
+        elif generator.on_trace(
+            NotIn(("function_def", "module")), "indented_block"
+        ):
             self._begin()
 
-    def releave_mid_node(self, mid_node: CSTNode, new_node: Optional[CSTNode], generator: "Generator") -> None:
+    def releave_mid_node(
+        self,
+        mid_node: CSTNode,
+        new_node: Optional[CSTNode],
+        generator: "Generator",
+    ) -> None:
         if generator.on_trace("indented_block"):
             self._end()
 

@@ -1,6 +1,10 @@
 from dataclasses import dataclass
 from libcst import CSTNode, FunctionDef, IndentedBlock, CSTVisitorT
-from libcst._nodes.internal import CodegenState, visit_body_sequence, visit_required
+from libcst._nodes.internal import (
+    CodegenState,
+    visit_body_sequence,
+    visit_required,
+)
 
 
 @dataclass(frozen=True)
@@ -8,10 +12,16 @@ class ModuleInnerVersion(CSTNode):
     functions: list[FunctionDef]
     main_block: IndentedBlock
 
-    def _visit_and_replace_children(self, visitor: CSTVisitorT) -> "ModuleInnerVersion":
+    def _visit_and_replace_children(
+        self, visitor: CSTVisitorT
+    ) -> "ModuleInnerVersion":
         return ModuleInnerVersion(
-            functions=visit_body_sequence(self, "functions", self.functions, visitor),
-            main_block=visit_required(self, "main_block", self.main_block, visitor),
+            functions=visit_body_sequence(
+                self, "functions", self.functions, visitor
+            ),
+            main_block=visit_required(
+                self, "main_block", self.main_block, visitor
+            ),
         )
 
     def _codegen_impl(self, state: CodegenState) -> None:

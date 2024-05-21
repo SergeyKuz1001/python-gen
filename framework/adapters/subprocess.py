@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 import subprocess
 
 
-class SubprocessAdapter(AbstractAdapter):
+class SubprocessAdapter(AbstractAdapter, ABC):
     @property
     @abstractmethod
     def shell_script(self) -> str: ...

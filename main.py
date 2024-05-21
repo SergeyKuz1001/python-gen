@@ -11,17 +11,43 @@ if __name__ == "__main__":
         for adapter in (RuffAdapter.Usual(), Flake8Adapter.Usual()):
             for args in [
                 (),
+                ("+uv-sa",),
+                ("+uv",),
                 ("-uv",),
+                ("+un",),
                 ("-un",),
-                ("-uv", "-un"),
-                ("-it",),
                 ("+it",),
-                ("-it", "-uv", "-un"),
-                ("+it", "-uv", "-un"),
+                ("+it-pr",),
+                ("-it",),
+                ("-it-ch",),
+                ("-it-ld",),
+                ("+il",),
+                ("-il",),
+                ("-il-ch",),
+                ("+uv-sa", "+uv"),
+                ("+it", "+it-pr"),
+                ("-it", "-it-ch"),
+                ("-it", "-it-ld"),
+                ("-it-ch", "-it-ld"),
+                ("-il", "-il-ch"),
+                ("-uv", "-un"),
+                ("+uv-sa", "-un"),
+                ("+it", "+il"),
+                ("-it-ch", "+un"),
                 ("-uv", "-un", "-it"),
                 ("-uv", "-un", "+it"),
+                ("+il", "-uv", "-un"),
+                ("-uv", "-un", "-il-ch"),
+                ("-uv", "-un", "-il-ch", "-it-ch"),
+                ("+uv-sa", "+un", "+it-pr", "+il"),
             ]:
-                Tester(SimpleGenerator.FromArgs(seed, args), adapter, "codes").test_linter()
+                success = Tester(
+                    SimpleGenerator.FromArgs(seed, args), adapter, "codes"
+                ).test_linter()
+                if not success:
+                    print(
+                        f"Error for seed = {seed}, args = {args}, adapter = {adapter.identifier}"
+                    )
         new_percentage = 100 * (seed + 1) // N
         if new_percentage > percentage:
             percentage = new_percentage
